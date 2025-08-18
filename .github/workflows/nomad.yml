@@ -1,0 +1,43 @@
+---
+name: "GitHub Self-Hosted Nomad"
+
+"on":
+  # Trigger the workflow on push or pull request,
+  # but only for the master branch
+  pull_request:
+    branches: ["**"]
+  push:
+    tags: ["v*"]
+    branches:
+      - "master"
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+env:
+  SHA: ${{ github.event.pull_request.head.sha || github.event.after }}
+
+jobs:
+  # Build job running on Nomad.
+  build-job:
+    name: "Build Docker"
+
+    runs-on:
+      - self-hosted
+      - x64
+      - type:small
+
+    strategy:
+      matrix:
+        od:
+          - "ubuntu-24.04"
+
+    env:
+      WORKSPACE: ${{ github.workspace }}
+
+    steps:
+      - name: "Checkout repository."
+        uses: "actions/checkout@v4"
+
+      - name: "Cache Docker layers"
+        run: |
+          echo "Hello World!"
