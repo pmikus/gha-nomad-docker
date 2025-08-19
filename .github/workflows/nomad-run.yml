@@ -23,11 +23,21 @@ jobs:
     name: "Run Dummy Test"
 
     runs-on:
+      - self-hosted
       - nomad
+
+    strategy:
+      max-parallel: 1
+      matrix:
+        stream:
+          - "master"
+
+    env:
+      WORKSPACE: ${{ github.workspace }}
 
     steps:
       - name: "Checkout repository."
         uses: "actions/checkout@v4"
 
       - name: "Run Command"
-        run: hostname
+        run: "hostname"

@@ -9,7 +9,7 @@ function deregister_runner {
     )
 
     echo "Deregistering runner"
-    /actions-runner/config.sh remove --token "${remove_token}"
+    ./config.sh remove --token "${remove_token}"
 
     echo "Removing workdir contents"
     rm -rf /home/github-runner/*
@@ -23,7 +23,7 @@ function register_runner {
 
     CONFIGURED=false
     if [ ! -f ".runner" ]; then
-        /actions-runner/config.sh \
+        ./config.sh \
             --disableupdate \
             --ephemeral \
             --labels "${RUNNER_LABELS}" \
