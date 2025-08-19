@@ -10,9 +10,6 @@ function deregister_runner {
 
     echo "Deregistering runner"
     ./config.sh remove --token "${remove_token}"
-
-    echo "Removing workdir contents"
-    rm -rf /home/github-runner/*
 }
 
 function register_runner {
@@ -31,8 +28,7 @@ function register_runner {
             --replace \
             --token "${registration_token}" \
             --unattended \
-            --url "${GITHUB_URL}" \
-            --work "/home/github-runner"
+            --url "${GITHUB_URL}"
     fi
     CONFIGURED=true
 }
