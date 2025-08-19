@@ -26,7 +26,7 @@ job "gha-runner" {
     task "gha-runner" {
       driver = "docker"
       config {
-        image = var.constraint_image
+        image = var.image
       }
       env {
         GITHUB_URL    = "${NOMAD_META_github_url}"
@@ -78,7 +78,7 @@ variable "image" {
   # Set the `NOMAD_VAR_image` environment variable to override the
   # default image for the task.
   type    = string
-  default = "pmikus/nomad-gha-runner:2.328.0"
+  default = "pmikus/nomad-gha-runner:latest"
 }
 
 variable "memory" {

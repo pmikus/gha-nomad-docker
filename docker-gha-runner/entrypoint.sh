@@ -23,7 +23,7 @@ function register_runner {
 
     CONFIGURED=false
     if [ ! -f ".runner" ]; then
-        ./config.sh \
+        /actions-runner/config.sh \
             --disableupdate \
             --ephemeral \
             --labels "${RUNNER_LABELS}" \

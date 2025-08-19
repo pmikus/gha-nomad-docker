@@ -4,7 +4,8 @@ variable "IMAGE_REPOSITORY" {
 
 group "default" {
     targets = [
-      "latest"
+      "latest",
+      "gha"
     ]
 }
 
