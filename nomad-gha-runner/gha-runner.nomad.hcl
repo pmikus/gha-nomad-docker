@@ -6,7 +6,9 @@ job "gha-runner" {
   parameterized {
     meta_required = [
       "github_url",
-      "runner_token",
+      "github_pat",
+      "github_org",
+      "github_repo",
       "runner_labels"
     ]
   }
@@ -24,11 +26,13 @@ job "gha-runner" {
     task "gha-runner" {
       driver = "docker"
       config {
-        image = "pmikus/nomad-gha-runner:2.328.0"
+        image = var.constraint_image
       }
       env {
         GITHUB_URL    = "${NOMAD_META_github_url}"
-        RUNNER_TOKEN  = "${NOMAD_META_runner_token}"
+        GITHUB_PAT    = "${NOMAD_META_github_pat}"
+        GITHUB_ORG    = "${NOMAD_META_github_org}"
+        GITHUB_REPO   = "${NOMAD_META_github_repo}"
         RUNNER_LABELS = "${NOMAD_META_runner_labels}"
       }
       kill_timeout = "30s"
@@ -68,6 +72,13 @@ variable "cpu" {
   # default cpu for the task.
   type    = number
   default = 8000
+}
+
+variable "image" {
+  # Set the `NOMAD_VAR_image` environment variable to override the
+  # default image for the task.
+  type    = string
+  default = "pmikus/nomad-gha-runner:2.328.0"
 }
 
 variable "memory" {
