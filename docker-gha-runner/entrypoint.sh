@@ -47,7 +47,7 @@ register_runner
 trap 'deregister_runner' SIGINT SIGQUIT SIGTERM
 
 # Launch the Github Runner
-./bin/Runner.Listener run --disableupdate --ephemeral
+./bin/Runner.Listener run
 
 # Deregister the Github runner
 deregister_runner
