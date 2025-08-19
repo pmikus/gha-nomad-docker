@@ -1,0 +1,92 @@
+---
+# docker.yml
+name: "GitHub Action Runner Docker Image"
+
+"on":
+  # Trigger the workflow on push or pull request,
+  # but only for the master branch
+  pull_request:
+    branches: ["**"]
+  push:
+    tags: ["v*"]
+    branches:
+      - "master"
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+env:
+  # Hostname of your registry
+  REGISTRY: "docker.io"
+  SHA: ${{ github.event.pull_request.head.sha || github.event.after }}
+
+jobs:
+  # Build job running on Nomad.
+  build-job:
+    name: "Build Docker"
+
+    runs-on:
+      - ubuntu-latest
+
+    strategy:
+      matrix:
+        image:
+          - "nomad-gha-runner"
+
+    steps:
+      - name: "Checkout repository."
+        uses: "actions/checkout@v4"
+
+      - name: "Cache Docker layers"
+        id: actions_cache
+        uses: "actions/cache@v4"
+        with:
+          path: "/tmp/.buildx-cache"
+          key: "${{ runner.os }}-buildx-${{ github.sha }}"
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      - name: "Set up Docker Buildx"
+        id: "docker_buildx"
+        uses: "docker/setup-buildx-action@v3"
+
+      # Authenticate to the container registry
+      - name: "Authenticate to registry ${{ env.REGISTRY }}"
+        id: "docker_login"
+        uses: "docker/login-action@v3"
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Add metadata
+      - name: "Docker meta"
+        id: "docker_meta"
+        uses: "docker/metadata-action@v5"
+        with:
+          labels: |
+            org.opencontainers.image.maintainer=Peter Mikus
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha
+
+      # Build and push Docker image with Buildx
+      # (don't push on PR, load instead)
+      - name: "Build and push Docker image"
+        id: "docker_build"
+        uses: "docker/bake-action@v6"
+        with:
+          builder: "${{ steps.docker_buildx.outputs.name }}"
+          files: |
+            "./docker-bake.hcl"
+            "cwd://${{ steps.docker_meta.outputs.bake-file-tags }}"
+            "cwd://${{ steps.docker_meta.outputs.bake-file-labels }}"
+          load: ${{ github.event_name == 'pull_request' }}
+          provenance: ${{ github.event_name != 'pull_request' }}
+          push: ${{ github.event_name != 'pull_request' }}
+          sbom: ${{ github.event_name != 'pull_request' }}
+          source: "."
+          workdir: "./${{ matrix.image }}"

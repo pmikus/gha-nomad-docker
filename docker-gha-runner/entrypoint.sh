@@ -18,3 +18,5 @@ fi
 CONFIGURED=true
 
 exec ./run.sh
+
+#./bin/Runner.Listener run --disableupdate --ephemeral
