@@ -22,7 +22,7 @@ env:
 jobs:
   # Build job running on Nomad.
   build-job:
-    name: "Build Docker"
+    name: "Build Docker Images"
 
     runs-on:
       - ubuntu-latest
@@ -30,7 +30,7 @@ jobs:
     strategy:
       matrix:
         image:
-          - "nomad-gha-runner"
+          - "docker-gha-runner"
 
     steps:
       - name: "Checkout repository."
