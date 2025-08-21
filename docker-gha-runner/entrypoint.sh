@@ -3,10 +3,9 @@
 set -e
 
 function deregister_runner {
-    echo "Get Runner Deregistration Token"
-    # https://api.github.com/orgs/{GITHUB_ORG}/actions/runners/remove-token
+    #echo "Get Runner Deregistration Token"
     #token=$(
-    #    curl -sS -X POST -H "Authorization: token ${GITHUB_PAT}" https://api.github.com/repos/${GITHUB_ORG}/${GITHUB_REPO}/actions/runners/remove-token | jq -r .token
+    #    curl -sS -X POST -H "Authorization: token ${GITHUB_PAT}" https://api.github.com/${GITHUB_URL}/actions/runners/remove-token | jq -r .token
     #)
 
     echo "Deregistering runner"
@@ -15,13 +14,12 @@ function deregister_runner {
 
 function register_runner {
     echo "Get Runner Registration Token"
-    # https://api.github.com/orgs/{GITHUB_ORG}/actions/runners/registration-token
     token=$(
-        curl -sS -X POST -H "Authorization: token ${GITHUB_PAT}" https://api.github.com/repos/${GITHUB_ORG}/${GITHUB_REPO}/actions/runners/registration-token | jq -r .token
+        curl -sS -X POST -H "Authorization: token ${GITHUB_PAT}" https://api.github.com/${GITHUB_URL}/actions/runners/registration-token | jq -r .token
     )
 
     echo "Configuring runner"
-    CONFIGURED=true
+    CONFIGURED=false
     ./config.sh \
         --disableupdate \
         --ephemeral \
@@ -30,7 +28,7 @@ function register_runner {
         --replace \
         --token "${token}" \
         --unattended \
-        --url "${GITHUB_URL}"
+        --url "https://github.com/${GITHUB_URL}"
     CONFIGURED=true
 }
 

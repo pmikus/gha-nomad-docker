@@ -13,27 +13,27 @@ GH_URL = os.environ["GITHUB_URL"]
 
 
 def trigger_runner_job(response):
-    if
-    try:
-        subprocess.run(
-            ["nomad", "job", "run", "default.hcl"],
-            env=os.environ | {
-                "NOMAD_VAR_node_pool": "default",
-                "NOMAD_VAR_region": "global",
-                "NOMAD_VAR_namespace": "prod",
-                "NOMAD_VAR_name": "gha-17120745847",
-                "NOMAD_VAR_constraint_arch": "amd64",
-                "NOMAD_VAR_constraint_class": "builder",
-                "NOMAD_VAR_image": "pmikus/nomad-gha-runner:latest",
-                "NOMAD_VAR_cpu": "24000",
-                "NOMAD_VAR_memory": "24000",
-                "NOMAD_VAR_env_runner_labels": "nomad"
-            },
-            check=True
-        )
-    except subprocess.CalledProcessError as e:
-        print("Nomad job failed:", e.stderr)
-        raise
+    if response["total_count"]:
+        try:
+            subprocess.run(
+                ["nomad", "job", "run", "default.hcl"],
+                env=os.environ | {
+                    "NOMAD_VAR_node_pool": "default",
+                    "NOMAD_VAR_region": "global",
+                    "NOMAD_VAR_namespace": "prod",
+                    "NOMAD_VAR_name": "gha-17120745847",
+                    "NOMAD_VAR_constraint_arch": "amd64",
+                    "NOMAD_VAR_constraint_class": "builder",
+                    "NOMAD_VAR_image": "pmikus/nomad-gha-runner:latest",
+                    "NOMAD_VAR_cpu": "24000",
+                    "NOMAD_VAR_memory": "24000",
+                    "NOMAD_VAR_env_runner_labels": "nomad"
+                },
+                check=True
+            )
+        except subprocess.CalledProcessError as e:
+            print("Nomad job failed:", e.stderr)
+            raise
 
 def on_success(response: requests.Response):
     """
@@ -47,7 +47,7 @@ def on_success(response: requests.Response):
           f"Status code {response.status_code} for {response.url}"
     )
     print(response.json())
-    trigger_runner_job(str(response.content))
+    trigger_runner_job(response.json())
 
 def on_failure(response: requests.Response):
     """

@@ -1,9 +1,10 @@
 job "gha-runner" {
   datacenters = [var.datacenter]
   type        = "batch"
-  node_pool   = "default"
-  region      = "global"
-  namespace   = "prod"
+  node_pool   = var.node_pool
+  region      = var.region
+  namespace   = var.namespace
+  name        = var.name
 
   group "gha-runner" {
     count = 1
@@ -36,7 +37,7 @@ job "gha-runner" {
         destination = "${NOMAD_SECRETS_DIR}/.env"
         env         = true
         data        = <<EOT
-{{- with nomadVar "nomad/jobs/gha-runner" -}}
+{{- with nomadVar "nomad/jobs/" -}}
 {{- range $k, $v := . }}
 {{ $k }}={{ $v }}
 {{- end }}
@@ -83,6 +84,13 @@ variable "namespace" {
   # default for the task.
   type    = string
   default = "prod"
+}
+
+variable "name" {
+  # Set the `NOMAD_VAR_name` environment variable to override the
+  # default for the task.
+  type    = string
+  default = "gha"
 }
 
 variable "constraint_arch" {
