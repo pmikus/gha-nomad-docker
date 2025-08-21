@@ -28,7 +28,7 @@ function register_runner {
         --replace \
         --token "${token}" \
         --unattended \
-        --url "https://github.com/${GITHUB_URL}"
+        --url "https://github.com/${GITHUB_ORG}/${GITHUB_REPO}"
     CONFIGURED=true
 }
 

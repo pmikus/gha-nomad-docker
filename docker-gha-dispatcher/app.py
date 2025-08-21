@@ -18,7 +18,7 @@ def trigger_runner_job(response):
             subprocess.run(
                 ["nomad", "job", "run", "default.hcl"],
                 env={
-                    "NOMAD_ADDR": "http://nomad.service.consul:4646",
+                    "NOMAD_ADDR": "http://10.30.51.24:4646",
                     "NOMAD_VAR_node_pool": "default",
                     "NOMAD_VAR_region": "global",
                     "NOMAD_VAR_namespace": "prod",

@@ -37,7 +37,7 @@ job "gha-runner" {
         destination = "${NOMAD_SECRETS_DIR}/.env"
         env         = true
         data        = <<EOT
-{{- with nomadVar "nomad/jobs/" -}}
+{{- with nomadVar "nomad/jobs" -}}
 {{- range $k, $v := . }}
 {{ $k }}={{ $v }}
 {{- end }}
