@@ -22,7 +22,7 @@ function register_runner {
 
     CONFIGURED=false
     if [ ! -f ".runner" ]; then
-        ./config.sh \
+        config_return=$(./config.sh \
             --disableupdate \
             --ephemeral \
             --labels "${RUNNER_LABELS}" \
@@ -30,7 +30,8 @@ function register_runner {
             --replace \
             --token "${registration_token}" \
             --unattended \
-            --url "${GITHUB_URL}"
+            --url "${GITHUB_URL}")
+        echo $config_return
     fi
     cat .runner
     CONFIGURED=true
