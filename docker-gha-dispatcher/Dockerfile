@@ -1,5 +1,6 @@
-ARG BASE_IMAGE
-FROM ${BASE_IMAGE:-ghcr.io/astral-sh/uv:python3.13-trixie-slim}
+ARG BASE_IMAGE=ghcr.io/astral-sh/uv:python3.13-trixie-slim
+
+FROM ${BASE_IMAGE}
 
 COPY --from=hashicorp/nomad:1.10 /bin/nomad /bin/nomad
 

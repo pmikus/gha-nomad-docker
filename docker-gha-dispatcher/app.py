@@ -7,23 +7,30 @@ from datetime import datetime
 
 # Configuration from environment
 # GitHub PAT with admin:org scope
-GITHUB_PAT = os.environ["GITHUB_PAT"]
-# GitHub organization name
-GITHUB_ORG = os.environ["GITHUB_ORG"]
-# GitHub repository name
-GITHUB_REPO = os.environ["GITHUB_REPO"]
-# GitHub url
-# https://github.com/orgs/{GITHUB_ORG}/{GITHUB_REPO}"
-GITHUB_URL = f"https://github.com/{GITHUB_ORG}/{GITHUB_REPO}"
-# https://api.github.com/orgs/{GITHUB_ORG}/actions/runs?status=queued"
-GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_ORG}/{GITHUB_REPO}/actions/runs?status=queued"
+GH_PAT = os.environ["GITHUB_PAT"]
+# GitHub URL
+GH_URL = os.environ["GITHUB_URL"]
 
 
-def trigger_runner_job():
-    cmd = ["nomad", "job", "run", "/nomad-gha-runner/nomad-gha-runner.hcl"]
-    print("Running Nomad job with command:", " ".join(cmd))
+def trigger_runner_job(response):
+    if
     try:
-        subprocess.run(cmd, check=True)
+        subprocess.run(
+            ["nomad", "job", "run", "default.hcl"],
+            env=os.environ | {
+                "NOMAD_VAR_node_pool": "default",
+                "NOMAD_VAR_region": "global",
+                "NOMAD_VAR_namespace": "prod",
+                "NOMAD_VAR_name": "gha-17120745847",
+                "NOMAD_VAR_constraint_arch": "amd64",
+                "NOMAD_VAR_constraint_class": "builder",
+                "NOMAD_VAR_image": "pmikus/nomad-gha-runner:latest",
+                "NOMAD_VAR_cpu": "24000",
+                "NOMAD_VAR_memory": "24000",
+                "NOMAD_VAR_env_runner_labels": "nomad"
+            },
+            check=True
+        )
     except subprocess.CalledProcessError as e:
         print("Nomad job failed:", e.stderr)
         raise
@@ -39,8 +46,8 @@ def on_success(response: requests.Response):
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] SUCCESS: "
           f"Status code {response.status_code} for {response.url}"
     )
-    print(str(response.content))
-    #trigger_runner_job
+    print(response.json())
+    trigger_runner_job(str(response.content))
 
 def on_failure(response: requests.Response):
     """
@@ -66,15 +73,17 @@ def check_api_status(interval=10, timeout=5):
     :raises RequestException: If REST API get failed.
     """
     headers = {
-        "Authorization": f"token {GITHUB_PAT}",
+        "Authorization": f"token {GH_PAT}",
         "Accept": "application/vnd.github+json",
     }
 
-    print(f"Starting API status checker for {GITHUB_API_URL}")
+    print(f"Starting API status checker...")
     while True:
         try:
             response = requests.get(
-                GITHUB_API_URL, timeout=timeout, headers=headers
+                f"https://api.github.com/{GH_URL}/actions/runs?status=queued",
+                timeout=timeout,
+                headers=headers
             )
 
             # Check for a successful status code (200-299).
