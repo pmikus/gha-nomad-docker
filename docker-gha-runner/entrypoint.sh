@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -ex
 
 function deregister_runner {
     echo "Get Runner Deregistration Token"
@@ -26,7 +26,7 @@ function register_runner {
             --disableupdate \
             --ephemeral \
             --labels "${RUNNER_LABELS}" \
-            --name "$(hostname)-$NOMAD_ALLOC_ID" \
+            --name "${NOMAD_ALLOC_ID}" \
             --replace \
             --token "${registration_token}" \
             --unattended \
