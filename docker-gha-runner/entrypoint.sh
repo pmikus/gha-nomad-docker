@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -ex
 
 function deregister_runner {
     #echo "Get Runner Deregistration Token"
