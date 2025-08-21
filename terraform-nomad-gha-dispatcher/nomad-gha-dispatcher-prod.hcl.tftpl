@@ -1,0 +1,43 @@
+job "${job_name}" {
+  datacenters = ["${datacenters}"]
+  type        = "${type}"
+  node_pool   = "${node_pool}"
+  region      = "${region}"
+  namespace   = "${namespace}"
+
+  group "${job_name}" {
+    count = 1
+    ephemeral_disk {
+      migrate = false
+      size    = 3000
+      sticky  = false
+    }
+    restart {
+      interval = "1m"
+      attempts = 30
+      delay    = "15s"
+      mode     = "delay"
+    }
+    task "${job_name}" {
+      driver = "docker"
+      config {
+        image = "${image}"
+      }
+      template {
+        destination = "$${NOMAD_SECRETS_DIR}/.env"
+        env         = true
+        data        = <<EOT
+{{- with nomadVar "nomad/jobs/gha-dispatcher-prod" -}}
+{{- range $k, $v := . }}
+{{ $k }}={{ $v }}
+{{- end }}
+{{- end }}
+EOT
+      }
+      resources {
+        cpu    = ${cpu}
+        memory = ${memory}
+      }
+    }
+  }
+}

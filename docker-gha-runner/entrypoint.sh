@@ -1,9 +1,10 @@
 #!/bin/bash
 
-set -exuo pipefail
+set -e
 
 function deregister_runner {
     echo "Get Runner Deregistration Token"
+    # https://api.github.com/orgs/{GITHUB_ORG}/actions/runners/remove-token
     remove_token=$(
         curl -sS -X POST -H "Authorization: token ${GITHUB_PAT}" https://api.github.com/repos/${GITHUB_ORG}/${GITHUB_REPO}/actions/runners/remove-token | jq -r .token
     )
@@ -14,6 +15,7 @@ function deregister_runner {
 
 function register_runner {
     echo "Get Runner Registration Token"
+    # https://api.github.com/orgs/{GITHUB_ORG}/actions/runners/registration-token
     registration_token=$(
         curl -sS -X POST -H "Authorization: token ${GITHUB_PAT}" https://api.github.com/repos/${GITHUB_ORG}/${GITHUB_REPO}/actions/runners/registration-token | jq -r .token
     )
@@ -30,6 +32,7 @@ function register_runner {
             --unattended \
             --url "${GITHUB_URL}"
     fi
+    cat .runner
     CONFIGURED=true
 }
 

@@ -1,5 +1,5 @@
 ARG BASE_IMAGE
-FROM ${BASE_IMAGE:-python:3.12-slim-trixie}
+FROM ${BASE_IMAGE:-ghcr.io/actions/actions-runner:latest}
 
 USER root
 COPY entrypoint.sh /entrypoint.sh

@@ -12,20 +12,15 @@ GITHUB_PAT = os.environ["GITHUB_PAT"]
 GITHUB_ORG = os.environ["GITHUB_ORG"]
 # GitHub repository name
 GITHUB_REPO = os.environ["GITHUB_REPO"]
+# GitHub url
+# https://github.com/orgs/{GITHUB_ORG}/{GITHUB_REPO}"
+GITHUB_URL = f"https://github.com/{GITHUB_ORG}/{GITHUB_REPO}"
+# https://api.github.com/orgs/{GITHUB_ORG}/actions/runs?status=queued"
+GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_ORG}/{GITHUB_REPO}/actions/runs?status=queued"
 
 
 def trigger_runner_job():
-    cmd = [
-        "nomad", "job", "dispatch",
-        # If using a GitHub Organization:
-        # "-meta", f"github_url=https://github.com/orgs/{GITHUB_ORG}/{GITHUB_REPO}",
-        "-meta", f"github_url=https://github.com/{GITHUB_ORG}/{GITHUB_REPO}",
-        "-meta", f"github_pat={GITHUB_PAT}",
-        "-meta", f"github_org={GITHUB_ORG}",
-        "-meta", f"github_repo={GITHUB_REPO}",
-        "-meta", "runner_labels=nomad",
-        "gha-runner"
-    ]
+    cmd = ["nomad", "job", "run", "/nomad-gha-runner/nomad-gha-runner.hcl"]
     print("Running Nomad job with command:", " ".join(cmd))
     try:
         subprocess.run(cmd, check=True)
@@ -64,23 +59,23 @@ def check_api_status(interval=10, timeout=5):
     Periodically checks the status of a given URL and takes action based on
     the result.
 
-    Args:
-        interval_seconds (int): The time in seconds to wait between checks.
-        timeout_seconds (int): The maximum time in seconds to wait for a response.
+    :param interval: The time in seconds to wait between checks.
+    :param timeout: The maximum time in seconds to wait for a response.
+    :type interval: int
+    :type timeout: int
+    :raises RequestException: If REST API get failed.
     """
-    # If using a GitHub organization:
-    # url = f"https://api.github.com/orgs/{GITHUB_ORG}/actions/runs?status=queued"
-    url = f"https://api.github.com/repos/"
-    url += f"{GITHUB_ORG}/{GITHUB_REPO}/actions/runs?status=queued"
     headers = {
         "Authorization": f"token {GITHUB_PAT}",
         "Accept": "application/vnd.github+json",
     }
 
-    print(f"Starting API status checker for {url}")
+    print(f"Starting API status checker for {GITHUB_API_URL}")
     while True:
         try:
-            response = requests.get(url, timeout=timeout, headers=headers)
+            response = requests.get(
+                GITHUB_API_URL, timeout=timeout, headers=headers
+            )
 
             # Check for a successful status code (200-299).
             if response.status_code >= 200 and response.status_code < 300:
