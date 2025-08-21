@@ -21,6 +21,7 @@ function register_runner {
     )
 
     echo "Configuring runner"
+    CONFIGURED=true
     ./config.sh \
         --disableupdate \
         --ephemeral \
@@ -30,6 +31,7 @@ function register_runner {
         --token "${token}" \
         --unattended \
         --url "${GITHUB_URL}"
+    CONFIGURED=true
 }
 
 export PATH=$PATH:/actions-runner
