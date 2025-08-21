@@ -9,7 +9,6 @@ ENV UV_TOOL_BIN_DIR=/usr/local/bin
 # Then, add the rest of the project source code and install it
 # Installing separately from its dependencies allows optimal layer caching
 COPY . /app
-COPY ../nomad-gha-runner /nomad-gha-runner
 
 # Sync the project into a new environment, asserting the lockfile is up to date
 WORKDIR /app
