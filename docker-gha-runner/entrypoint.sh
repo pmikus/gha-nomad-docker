@@ -1,40 +1,35 @@
 #!/bin/bash
 
-set -ex
+set -e
 
 function deregister_runner {
     echo "Get Runner Deregistration Token"
     # https://api.github.com/orgs/{GITHUB_ORG}/actions/runners/remove-token
-    remove_token=$(
-        curl -sS -X POST -H "Authorization: token ${GITHUB_PAT}" https://api.github.com/repos/${GITHUB_ORG}/${GITHUB_REPO}/actions/runners/remove-token | jq -r .token
-    )
+    #token=$(
+    #    curl -sS -X POST -H "Authorization: token ${GITHUB_PAT}" https://api.github.com/repos/${GITHUB_ORG}/${GITHUB_REPO}/actions/runners/remove-token | jq -r .token
+    #)
 
     echo "Deregistering runner"
-    ./config.sh remove --token "${remove_token}"
+    ./config.sh remove --token "${token}"
 }
 
 function register_runner {
     echo "Get Runner Registration Token"
     # https://api.github.com/orgs/{GITHUB_ORG}/actions/runners/registration-token
-    registration_token=$(
+    token=$(
         curl -sS -X POST -H "Authorization: token ${GITHUB_PAT}" https://api.github.com/repos/${GITHUB_ORG}/${GITHUB_REPO}/actions/runners/registration-token | jq -r .token
     )
 
-    CONFIGURED=false
-    if [ ! -f ".runner" ]; then
-        config_return=$(./config.sh \
-            --disableupdate \
-            --ephemeral \
-            --labels "${RUNNER_LABELS}" \
-            --name "${NOMAD_ALLOC_ID}" \
-            --replace \
-            --token "${registration_token}" \
-            --unattended \
-            --url "${GITHUB_URL}")
-        echo $config_return
-    fi
-    cat .runner
-    CONFIGURED=true
+    echo "Configuring runner"
+    ./config.sh \
+        --disableupdate \
+        --ephemeral \
+        --labels "${RUNNER_LABELS}" \
+        --name "${NOMAD_ALLOC_ID}" \
+        --replace \
+        --token "${token}" \
+        --unattended \
+        --url "${GITHUB_URL}"
 }
 
 export PATH=$PATH:/actions-runner
