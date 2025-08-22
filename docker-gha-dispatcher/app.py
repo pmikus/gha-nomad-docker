@@ -11,30 +11,70 @@ GH_PAT = os.environ["GITHUB_PAT"]
 # GitHub URL
 GH_URL = os.environ["GITHUB_URL"]
 
+headers = {
+    "Authorization": f"token {GH_PAT}",
+    "Accept": "application/vnd.github+json",
+}
+
 
 def trigger_runner_job(response):
-    if response["total_count"]:
-        try:
-            subprocess.run(
-                ["nomad", "job", "run", "default.hcl"],
-                env={
-                    "NOMAD_ADDR": "http://10.30.51.24:4646",
-                    "NOMAD_VAR_node_pool": "default",
-                    "NOMAD_VAR_region": "global",
-                    "NOMAD_VAR_namespace": "prod",
-                    "NOMAD_VAR_name": "gha-17120745847",
-                    "NOMAD_VAR_constraint_arch": "amd64",
-                    "NOMAD_VAR_constraint_class": "builder",
-                    "NOMAD_VAR_image": "pmikus/nomad-gha-runner:latest",
-                    "NOMAD_VAR_cpu": "24000",
-                    "NOMAD_VAR_memory": "24000",
-                    "NOMAD_VAR_env_runner_labels": "nomad"
-                },
-                check=True
-            )
-        except subprocess.CalledProcessError as e:
-            print("Nomad job failed:", e.stderr)
-            raise
+    """
+    This function is executed to trigger Nomad Job.
+
+    :param response: The response object from the successful request.
+    :type response: requests.Response
+    :raises RuntimeError: If subprocess call failed.
+    """
+    runs = response.json().get("workflow_runs", [])
+    if not runs:
+        return
+
+    for run in runs:
+        run_id = run["id"]
+        run_name = run["name"]
+        run_url = run["html_url"]
+
+        jobs_url = f"https://api.github.com/{GH_URL}/actions/runs/{run_id}/jobs"
+        jobs_response = requests.get(url=jobs_url, headers=headers)
+        jobs_response.raise_for_status()
+        jobs = jobs_response.json().get("jobs", [])
+
+        runs_on = []
+        for job in jobs:
+            if "labels" in job:
+                runs_on.extend(job["labels"])
+        print(f"Workflow: {run_name} | {run_id} | {set(runs_on)}")
+        if "aarch64" in runs_on:
+            runs_on_aarch = True
+        if "x86_64" in runs_on:
+            runs_on_x86 = True
+        if "prod" in runs_on:
+            runs_on_prod = True
+        if "self-hosted" in runs_on:
+            runs_on_nomad = True
+        print(f"A: {runs_on_aarch} | X: {runs_on_x86} | N: {runs_on_prod}")
+
+    #    try:
+    #        subprocess.run(
+    #            ["nomad", "job", "run", "default.hcl"],
+    #            env={
+    #                "NOMAD_ADDR": "http://10.30.51.24:4646",
+    #                "NOMAD_VAR_node_pool": "default",
+    #                "NOMAD_VAR_region": "global",
+    #                "NOMAD_VAR_namespace": "prod",
+    #                "NOMAD_VAR_name": f"gha-{run_id}",
+    #                "NOMAD_VAR_constraint_arch": "amd64",
+    #                "NOMAD_VAR_constraint_class": "builder",
+    #                "NOMAD_VAR_image": "pmikus/nomad-gha-runner:latest",
+    #                "NOMAD_VAR_cpu": "24000",
+    #                "NOMAD_VAR_memory": "24000",
+    #                "NOMAD_VAR_env_runner_labels": "nomad"
+    #            },
+    #            check=True
+    #        )
+    #    except subprocess.CalledProcessError as e:
+    #        print("Nomad job failed:", e.stderr)
+    #        raise
 
 def on_success(response: requests.Response):
     """
@@ -42,13 +82,11 @@ def on_success(response: requests.Response):
 
     :param response: The response object from the successful request.
     :type response: requests.Response
-    :raises RuntimeError: If subprocess call failed.
     """
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] SUCCESS: "
           f"Status code {response.status_code} for {response.url}"
     )
-    print(response.json())
-    trigger_runner_job(response.json())
+    trigger_runner_job(response)
 
 def on_failure(response: requests.Response):
     """
@@ -62,31 +100,21 @@ def on_failure(response: requests.Response):
           f"Status code {response.status_code} for {response.url}"
     )
 
-def check_api_status(interval=10, timeout=5):
+def check_api_status(interval=30):
     """
     Periodically checks the status of a given URL and takes action based on
     the result.
 
     :param interval: The time in seconds to wait between checks.
-    :param timeout: The maximum time in seconds to wait for a response.
     :type interval: int
-    :type timeout: int
     :raises RequestException: If REST API get failed.
     """
-    headers = {
-        "Authorization": f"token {GH_PAT}",
-        "Accept": "application/vnd.github+json",
-    }
-
     print(f"Starting API status checker...")
     while True:
         try:
-            response = requests.get(
-                f"https://api.github.com/{GH_URL}/actions/runs?status=queued",
-                timeout=timeout,
-                headers=headers
-            )
-
+            url = f"https://api.github.com/{GH_URL}/actions/runs"
+            params = {"status": "queued"}
+            response = requests.get(url=url, headers=headers, params=params)
             # Check for a successful status code (200-299).
             if response.status_code >= 200 and response.status_code < 300:
                 on_success(response)

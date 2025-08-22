@@ -25,6 +25,8 @@ jobs:
     runs-on:
       - self-hosted
       - nomad
+      - arch:x86_64
+      - class:builder
 
     strategy:
       max-parallel: 1
