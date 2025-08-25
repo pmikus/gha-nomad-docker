@@ -10,11 +10,32 @@ from datetime import datetime
 GH_PAT = os.environ["GITHUB_PAT"]
 # GitHub URL
 GH_URL = os.environ["GITHUB_URL"]
+# Organisation
+ORG = "fdio"
 
 headers = {
     "Authorization": f"token {GH_PAT}",
     "Accept": "application/vnd.github+json",
 }
+
+
+def parse_labels(labels, namespace="acme"):
+    """
+    This function parses labels from github runner.
+
+    :param labels: The response object from the successful request.
+    :param namespace: Custom namespace for labels.
+    :type labels: list
+    :type namespace: string
+    """
+    parsed = {}
+    for label in labels:
+        if label.startswith(namespace + "_"):
+            _, kv = label.split(namespace + "_", 1)
+            if "_" in kv:
+                key, value = kv.split("_", 1)
+                parsed[key] = value
+    return parsed
 
 
 def trigger_runner_job(response):
@@ -31,50 +52,54 @@ def trigger_runner_job(response):
 
     for run in runs:
         run_id = run["id"]
-        run_name = run["name"]
-        run_url = run["html_url"]
-
         jobs_url = f"https://api.github.com/{GH_URL}/actions/runs/{run_id}/jobs"
         jobs_response = requests.get(url=jobs_url, headers=headers)
         jobs_response.raise_for_status()
         jobs = jobs_response.json().get("jobs", [])
 
-        runs_on = []
+        labels = []
         for job in jobs:
             if "labels" in job:
-                runs_on.extend(job["labels"])
-        print(f"Workflow: {run_name} | {run_id} | {set(runs_on)}")
-        if "aarch64" in runs_on:
-            runs_on_aarch = True
-        if "x86_64" in runs_on:
-            runs_on_x86 = True
-        if "prod" in runs_on:
-            runs_on_prod = True
-        if "self-hosted" in runs_on:
-            runs_on_nomad = True
-        print(f"A: {runs_on_aarch} | X: {runs_on_x86} | N: {runs_on_prod}")
+                labels.extend(job["labels"])
 
-    #    try:
-    #        subprocess.run(
-    #            ["nomad", "job", "run", "default.hcl"],
-    #            env={
-    #                "NOMAD_ADDR": "http://10.30.51.24:4646",
-    #                "NOMAD_VAR_node_pool": "default",
-    #                "NOMAD_VAR_region": "global",
-    #                "NOMAD_VAR_namespace": "prod",
-    #                "NOMAD_VAR_name": f"gha-{run_id}",
-    #                "NOMAD_VAR_constraint_arch": "amd64",
-    #                "NOMAD_VAR_constraint_class": "builder",
-    #                "NOMAD_VAR_image": "pmikus/nomad-gha-runner:latest",
-    #                "NOMAD_VAR_cpu": "24000",
-    #                "NOMAD_VAR_memory": "24000",
-    #                "NOMAD_VAR_env_runner_labels": "nomad"
-    #            },
-    #            check=True
-    #        )
-    #    except subprocess.CalledProcessError as e:
-    #        print("Nomad job failed:", e.stderr)
-    #        raise
+        print(f"Workflow: {run_id} | {set(labels)}")
+
+        labels = parse_labels(labels)
+
+        if "nomad" not in labels:
+            pass
+
+        constraint_arch = labels.get("arch", "amd64")
+        constraint_class = labels.get("class", "builder")
+        namespace = labels.get("namespace", "prod")
+        print(f"A: {constraint_arch} | C: {constraint_class} | N: {namespace}")
+
+        try:
+            with open("default.hcl", "r+") as f:
+                content = f.read()
+                f.seek(0)
+                f.truncate()
+                f.write(content.replace('"gha-runner"', f"gha-{run_id}"))
+            subprocess.run(
+                ["nomad", "job", "run", "default.hcl"],
+                env={
+                    "NOMAD_ADDR": "http://10.30.51.24:4646",
+                    "NOMAD_VAR_node_pool": "default",
+                    "NOMAD_VAR_region": "global",
+                    "NOMAD_VAR_namespace": namespace,
+                    "NOMAD_VAR_name": f"gha-{run_id}",
+                    "NOMAD_VAR_constraint_arch": constraint_arch,
+                    "NOMAD_VAR_constraint_class": constraint_class,
+                    "NOMAD_VAR_image": "pmikus/nomad-gha-runner:latest",
+                    "NOMAD_VAR_cpu": "24000",
+                    "NOMAD_VAR_memory": "24000",
+                    "NOMAD_VAR_env_runner_labels": ",".join(labels)
+                },
+                check=True
+            )
+        except subprocess.CalledProcessError as e:
+            print("Nomad job failed:", e.stderr)
+            pass
 
 def on_success(response: requests.Response):
     """
