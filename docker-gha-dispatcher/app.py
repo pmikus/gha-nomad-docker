@@ -1,6 +1,8 @@
 import os
 import requests
 import subprocess
+from tempfile import NamedTemporaryFile
+from pathlib import Path
 from time import sleep
 from datetime import datetime
 
@@ -10,8 +12,6 @@ from datetime import datetime
 GH_PAT = os.environ["GITHUB_PAT"]
 # GitHub URL
 GH_URL = os.environ["GITHUB_URL"]
-# Organisation
-ORG = "fdio"
 
 headers = {
     "Authorization": f"token {GH_PAT}",
@@ -44,7 +44,6 @@ def trigger_runner_job(response):
 
     :param response: The response object from the successful request.
     :type response: requests.Response
-    :raises RuntimeError: If subprocess call failed.
     """
     runs = response.json().get("workflow_runs", [])
     if not runs:
@@ -64,39 +63,44 @@ def trigger_runner_job(response):
 
         print(f"Workflow: {run_id} | {set(labels)}")
 
-        labels = parse_labels(labels)
+        parsed_labels = parse_labels(labels)
 
         if "nomad" not in labels:
             pass
 
-        constraint_arch = labels.get("arch", "amd64")
-        constraint_class = labels.get("class", "builder")
-        namespace = labels.get("namespace", "prod")
-        print(f"A: {constraint_arch} | C: {constraint_class} | N: {namespace}")
+        constraint_arch = parsed_labels.get("arch", "amd64")
+        constraint_class = parsed_labels.get("class", "builder")
+        namespace = parsed_labels.get("namespace", "prod")
+        cpu = "24000"
+        memory = "24000"
+        if parsed_labels.get("type", "large") == "small":
+            cpu = "12000"
+            memory = "12000"
+        image = "pmikus/nomad-gha-runner:latest"
 
         try:
-            with open("default.hcl", "r+") as f:
-                content = f.read()
-                f.seek(0)
-                f.truncate()
-                f.write(content.replace('"gha-runner"', f"gha-{run_id}"))
-            subprocess.run(
-                ["nomad", "job", "run", "default.hcl"],
-                env={
-                    "NOMAD_ADDR": "http://10.30.51.24:4646",
-                    "NOMAD_VAR_node_pool": "default",
-                    "NOMAD_VAR_region": "global",
-                    "NOMAD_VAR_namespace": namespace,
-                    "NOMAD_VAR_name": f"gha-{run_id}",
-                    "NOMAD_VAR_constraint_arch": constraint_arch,
-                    "NOMAD_VAR_constraint_class": constraint_class,
-                    "NOMAD_VAR_image": "pmikus/nomad-gha-runner:latest",
-                    "NOMAD_VAR_cpu": "24000",
-                    "NOMAD_VAR_memory": "24000",
-                    "NOMAD_VAR_env_runner_labels": ",".join(labels)
-                },
-                check=True
-            )
+            with (
+                open("job.nomad.hcl", "r") as src,
+                NamedTemporaryFile(mode="w", suffix=".hcl", delete=True) as temp,
+            ):
+                content = src.read().replace('"gha-runner"', f"gha-{run_id}")
+                temp_file_path = Path(temp.name)
+                temp.write(content)
+                temp.flush()
+                subprocess.run(
+                    ["nomad", "job", "run", temp_file_path],
+                    env=os.environ | {
+                        "NOMAD_VAR_namespace": namespace,
+                        "NOMAD_VAR_name": f"gha-{run_id}",
+                        "NOMAD_VAR_constraint_arch": constraint_arch,
+                        "NOMAD_VAR_constraint_class": constraint_class,
+                        "NOMAD_VAR_image": image,
+                        "NOMAD_VAR_cpu": cpu,
+                        "NOMAD_VAR_memory": memory,
+                        "NOMAD_VAR_env_runner_labels": ",".join(labels)
+                    },
+                    check=True
+                )
         except subprocess.CalledProcessError as e:
             print("Nomad job failed:", e.stderr)
             pass
@@ -118,8 +122,7 @@ def on_failure(response: requests.Response):
     This function is executed when the URL check fails or an error occurs.
 
     :param response: The response object from the successful request.
-    :type response: requests.Response
-    :raises RuntimeError: If subprocess call failed.
+    :type response: requests.Responses
     """
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Failure: "
           f"Status code {response.status_code} for {response.url}"
@@ -132,7 +135,6 @@ def check_api_status(interval=30):
 
     :param interval: The time in seconds to wait between checks.
     :type interval: int
-    :raises RequestException: If REST API get failed.
     """
     print(f"Starting API status checker...")
     while True:
